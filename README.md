@@ -75,6 +75,19 @@ The status is implemented using an io.dropwizard.metrics HealthCheckRegistry. If
 one is provided to the hikari config under `:health-check-registry` it will be
 used, otherwise one will be created automatically.
 
+## Running tests
+
+You'll need a test database set up. Fire up psql and do this:
+
+```sql
+create database jdbc_util_test;
+create user jdbc_util_test with password 'foobar';
+grant all privileges on database jdbc_util_test to jdbc_util_test;
+```
+
+Then you can just run `lein test` as usual.
+
+
 ## Support
 
 To file a bug, please open a Jira ticket against this project. Bugs and PRs are
