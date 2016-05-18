@@ -156,3 +156,25 @@
                        [sql 0]
                        seq-params-w-indices)]
     (vec (conj (flatten parameters) sql'))))
+
+(defn table-has-primary-key?
+  [db-spec table]
+  (let [count-result (query db-spec
+                            [(str "SELECT  count(*)"
+                                  "  FROM  pg_index i"
+                                  "  JOIN  pg_attribute a ON a.attrelid = i.indrelid"
+                                  "                      AND a.attnum = ANY(i.indkey)"
+                                  "  WHERE i.indrelid = ?::regclass"
+                                  "  AND   i.indisprimary;")
+                             table])
+        primary-key-count (-> count-result first :count)]
+    (> primary-key-count 0)))
+
+(defn ensure-table-has-primary-key
+  "If the given table doesn't have a primary key, add one. This is mainly
+  useful for adding a primary key to a migrations table that doesn't already
+  have one, so it can by replicated with pglogical."
+  [db-spec table column]
+  (when-not (table-has-primary-key? db-spec table)
+    (jdbc/execute! db-spec
+                   [(str "ALTER TABLE " table " ADD PRIMARY KEY (" column ")")])))

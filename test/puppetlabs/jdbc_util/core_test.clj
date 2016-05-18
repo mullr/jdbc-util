@@ -221,3 +221,24 @@
               "2.0.0"
               ["doohickey" "jobby" "thingie"]
               ["US Robotics" "Omnicorp" "Cyberdyne Systems" "Morgan Industries"]])))))
+
+(deftest create-primary-keys
+  (jdbc/execute! test-db ["CREATE TABLE haspk (a INTEGER PRIMARY KEY);"])
+  (jdbc/execute! test-db ["CREATE TABLE nopk (a INTEGER);"])
+
+  (testing "look for a primary key that doesn't exist"
+    (is (not (table-has-primary-key? test-db "nopk"))))
+
+  (testing "look for a primary key that does exist"
+    (is (table-has-primary-key? test-db "haspk")))
+
+  (testing "ensure a primary key where there isn't one yet"
+    (ensure-table-has-primary-key test-db "nopk" "a")
+    (is (table-has-primary-key? test-db "nopk")))
+
+  (testing "ensure a primary key where there already is one"
+    (ensure-table-has-primary-key test-db "haspk" "a")
+    (is (table-has-primary-key? test-db "haspk"))))
+
+
+
