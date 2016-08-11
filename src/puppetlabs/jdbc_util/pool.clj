@@ -74,14 +74,23 @@
 
 (defn wrap-with-delayed-init
   "Wraps a connection pool that loops trying to get a connection, and then runs
-  init-fn (with the connection as argument) before returning any connections to
-  the application. Accepts a timeout in ms that's used when dereferencing the
-  future and by the status check. The datasource should have
-  initialization-fail-fast set before being created or this is pointless."
-  [^HikariDataSource datasource {:keys [migration-db migration-dir]} init-fn timeout]
+  databse migrations, then calls init-fn (with the connection as argument)
+  before returning any connections to the application. Accepts a timeout in ms
+  that's used when dereferencing the future and by the status check. The
+  datasource should have initialization-fail-fast set before being created or
+  this is pointless.
+
+  The migration-opts parameter is an options map to control migration; it looks
+  like this:
+
+  {:migration-db (db map or jdbc datasource to use for migrations)
+   :migration-dir (the directory on the classpath where migratus migrations are stored)
+   :replication-mode (:source, :replica, or :none)}"
+  [^HikariDataSource datasource migration-opts init-fn timeout]
   (when-not (.getHealthCheckRegistry datasource)
     (.setHealthCheckRegistry datasource (HealthCheckRegistry.)))
   (let [init-error (atom nil)
+        {:keys [migration-db migration-dir replication-mode] :or {replication-mode :none}} migration-opts
         pool-future
         (future
           (loop []
@@ -90,7 +99,8 @@
                        ;; Try to get a connection to make sure the db is ready
                        (.close (.getConnection datasource))
                        (try
-                         (migration/migrate migration-db migration-dir)
+                         (when-not (= :replica replication-mode)
+                           (migration/migrate migration-db migration-dir))
                          (catch Exception e
                            (reset! init-error e)
                            (log/errorf e (trs "{0} - An error was encountered during database migration."
